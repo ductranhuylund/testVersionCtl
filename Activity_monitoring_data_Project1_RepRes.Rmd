@@ -1,0 +1,132 @@
+---
+title: "Activity monitoring data"
+output:
+  pdf_document: default
+  html_document: default
+date: "2026-03-26"
+---
+
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(lubridate)
+```
+
+1. Load and Process Data
+```{r setup}
+# Read dataset
+data <- read.csv("C:\Users\HP Z4 G4\Documents\JHU_DS_R\activity.csv")
+
+# Convert date column to Date type
+data$date <- as.Date(data$date)
+
+# Check structure
+str(data)
+summary(data)
+```
+2. Total Steps Per Day
+
+steps_per_day <- data %>%
+  group_by(date) %>%
+  summarise(total_steps = sum(steps, na.rm = TRUE))
+
+
+Histogram
+
+ggplot(steps_per_day, aes(x = total_steps)) +
+  geom_histogram(binwidth = 1000, fill = "steelblue") +
+  labs(title = "Histogram of Total Steps per Day",
+       x = "Total Steps",
+       y = "Frequency")
+
+
+Mean and Median
+
+mean_steps <- mean(steps_per_day$total_steps, na.rm = TRUE)
+median_steps <- median(steps_per_day$total_steps, na.rm = TRUE)
+
+mean_steps
+median_steps
+
+
+3. Average Daily Activity Pattern
+
+interval_avg <- data %>%
+  group_by(interval) %>%
+  summarise(avg_steps = mean(steps, na.rm = TRUE))
+
+Time Series Plot
+
+ggplot(interval_avg, aes(x = interval, y = avg_steps)) +
+  geom_line(color = "blue") +
+  labs(title = "Average Steps per 5-Minute Interval",
+       x = "Interval",
+       y = "Average Steps")
+
+
+Interval with Maximum Steps
+
+max_interval <- interval_avg %>%
+  filter(avg_steps == max(avg_steps))
+
+max_interval
+
+4. Imputing Missing Values
+Strategy
+
+We replace missing steps values with the mean for that 5-minute interval.
+
+# Create a lookup table for interval means
+interval_means <- data %>%
+  group_by(interval) %>%
+  summarise(mean_steps = mean(steps, na.rm = TRUE))
+
+# Merge and impute
+data_imputed <- data %>%
+  left_join(interval_means, by = "interval") %>%
+  mutate(steps = ifelse(is.na(steps), mean_steps, steps)) %>%
+  select(-mean_steps)
+
+
+5. Histogram After Imputation
+
+steps_per_day_imputed <- data_imputed %>%
+  group_by(date) %>%
+  summarise(total_steps = sum(steps))
+
+ggplot(steps_per_day_imputed, aes(x = total_steps)) +
+  geom_histogram(binwidth = 1000, fill = "darkgreen") +
+  labs(title = "Histogram of Total Steps per Day (Imputed)",
+       x = "Total Steps",
+       y = "Frequency")
+
+6. Weekday vs Weekend Analysis
+
+data_imputed$day_type <- ifelse(weekdays(data_imputed$date) %in% c("Saturday", "Sunday"),
+                               "Weekend", "Weekday")
+
+interval_daytype <- data_imputed %>%
+  group_by(interval, day_type) %>%
+  summarise(avg_steps = mean(steps), .groups = "drop")
+
+Panel Plot
+
+ggplot(interval_daytype, aes(x = interval, y = avg_steps)) +
+  geom_line(color = "purple") +
+  facet_wrap(~day_type, ncol = 1) +
+  labs(title = "Average Steps per Interval: Weekday vs Weekend",
+       x = "Interval",
+       y = "Average Steps")
+
+
+
+
+
+
+
+
